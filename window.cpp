@@ -45,65 +45,66 @@
 
 Window::Window() : destructinateCountDown(3)
 {
-    QGridLayout *mainLayout = new QGridLayout;
+  QGridLayout *mainLayout = new QGridLayout;
 
-    QStringList texturePaths = QStringList() << QString(":/images/side1.png") << QString(":/images/side2.png");
+  QStringList texturePaths = QStringList() << QString(":/images/side1.png") << QString(":/images/side2.png") << QString(":/images/side3.png") << QString(":/images/side4.png") << QString(":/images/side5.png") << QString(":/images/side6.png");
 
-    QGLFormat glFormat;
-    glFormat.setVersion( 3, 2 );
-    glFormat.setProfile( QGLFormat::CoreProfile );
+  QGLFormat glFormat;
+  glFormat.setVersion( 3, 2 );
+  glFormat.setProfile( QGLFormat::CoreProfile );
 
-    for (int i = 0; i < NumRows; ++i) {
-        for (int j = 0; j < NumColumns; ++j) {
-            QColor clearColor;
-            clearColor.setHsv(((i * NumColumns) + j) * 255
-                              / (NumRows * NumColumns - 1),
-                              255, 63);
+  int c = 0;
+  for (int i = 0; i < NumRows; ++i) {
+    for (int j = 0; j < NumColumns; ++j) {
+      QColor clearColor;
+      clearColor.setHsv(((i * NumColumns) + j) * 255
+                        / (NumRows * NumColumns - 1),
+                        255, 63);
 
-            qDebug() << texturePaths[j % 2] << endl;
-            glWidgets[i][j] = new GLWidget(texturePaths[j % 2], 0, 0);
-            glWidgets[i][j]->setFormat(glFormat);
-            glWidgets[i][j]->setClearColor(clearColor);
-            glWidgets[i][j]->rotateBy(+42 * 16, +42 * 16, -21 * 16);
-            mainLayout->addWidget(glWidgets[i][j], i, j);
+      glWidgets[i][j] = new GLWidget(texturePaths[c], 0, 0);
+      glWidgets[i][j]->setFormat(glFormat);
+      glWidgets[i][j]->setClearColor(clearColor);
+      glWidgets[i][j]->rotateBy(+42 * 16, +42 * 16, -21 * 16);
+      mainLayout->addWidget(glWidgets[i][j], i, j);
 
-            connect(glWidgets[i][j], SIGNAL(clicked()),
-                    this, SLOT(setCurrentGlWidget()));
-        }
+      connect(glWidgets[i][j], SIGNAL(clicked()), this, SLOT(setCurrentGlWidget()));
+      c++; // YES :)
     }
-    setLayout(mainLayout);
+  }
+  setLayout(mainLayout);
 
-    currentGlWidget = glWidgets[0][0];
+  currentGlWidget = glWidgets[0][0];
 
-    QTimer *timer = new QTimer(this);
-    connect(timer, SIGNAL(timeout()), this, SLOT(rotateOneStep()));
-    timer->start(20);
+  QTimer *timer = new QTimer(this);
+  connect(timer, SIGNAL(timeout()), this, SLOT(rotateOneStep()));
+  timer->start(20);
 
-    setWindowTitle(tr("Textures"));
+  setWindowTitle(tr("Textures"));
 }
 
 void Window::setCurrentGlWidget()
 {
-    currentGlWidget = qobject_cast<GLWidget *>(sender());
-    if (this->destructinateCountDown > 0) {
-      qDebug() << --this->destructinateCountDown << endl;
-    }
+  currentGlWidget = qobject_cast<GLWidget *>(sender());
+  if (this->destructinateCountDown > 0) {
+    qDebug() << --this->destructinateCountDown << endl;
+  }
 
-    if (this->destructinateCountDown == 0) {
-      for (int i = 0; i < NumRows; ++i) {
-          for (int j = 0; j < NumColumns; ++j) {
-            glWidgets[i][j]->destructinatePixmaps();
-          }
+  if (this->destructinateCountDown == 0) {
+    for (int i = 0; i < NumRows; ++i) {
+      for (int j = 0; j < NumColumns; ++j) {
+        glWidgets[i][j]->destructinatePixmaps();
       }
-      this->destructinateCountDown = -1;
-      qDebug() << "pixmaps destructinated!" << endl;
     }
+    this->destructinateCountDown = -1;
+    qDebug() << "pixmaps destructinated!" << endl;
+  }
 
 
 }
 
 void Window::rotateOneStep()
 {
-    if (currentGlWidget)
-        currentGlWidget->rotateBy(+2 * 16, +2 * 16, -1 * 16);
+  if (currentGlWidget) {
+    currentGlWidget->rotateBy(+2 * 16, +2 * 16, -1 * 16);
+  }
 }

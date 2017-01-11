@@ -47,22 +47,22 @@ class GLWidget;
 
 class Window : public QWidget
 {
-    Q_OBJECT
+  Q_OBJECT
 
 public:
-    Window();
+  Window();
 
 private slots:
-    void setCurrentGlWidget();
-    void rotateOneStep();
+  void setCurrentGlWidget();
+  void rotateOneStep();
 
 private:
-    enum { NumRows = 1, NumColumns = 2 };
+  enum { NumRows = 3, NumColumns = 2 };
 
-    GLWidget *glWidgets[NumRows][NumColumns];
-    GLWidget *currentGlWidget;
+  GLWidget *glWidgets[NumRows][NumColumns];
+  GLWidget *currentGlWidget;
 
-    int destructinateCountDown;
+  int destructinateCountDown;
 };
 
 #endif

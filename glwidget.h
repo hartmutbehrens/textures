@@ -49,48 +49,48 @@ QT_FORWARD_DECLARE_CLASS(QGLShaderProgram);
 
 class GLWidget : public QGLWidget, protected QOpenGLFunctions
 {
-    Q_OBJECT
+  Q_OBJECT
 
 public:
-    explicit GLWidget(const QString& texturePath, QWidget *parent = 0, QGLWidget *shareWidget = 0);
-    ~GLWidget();
+  explicit GLWidget(const QString& texturePath, QWidget *parent = 0, QGLWidget *shareWidget = 0);
+  ~GLWidget();
 
-    QSize minimumSizeHint() const;
-    QSize sizeHint() const;
-    void rotateBy(int xAngle, int yAngle, int zAngle);
-    void setClearColor(const QColor &color);
+  QSize minimumSizeHint() const;
+  QSize sizeHint() const;
+  void rotateBy(int xAngle, int yAngle, int zAngle);
+  void setClearColor(const QColor &color);
 
-    void destructinatePixmaps();
+  void destructinatePixmaps();
 
 signals:
-    void clicked();
+  void clicked();
 
 protected:
-    void initializeGL();
-    void paintGL();
-    void resizeGL(int width, int height);
-    void mousePressEvent(QMouseEvent *event);
-    void mouseMoveEvent(QMouseEvent *event);
-    void mouseReleaseEvent(QMouseEvent *event);
+  void initializeGL();
+  void paintGL();
+  void resizeGL(int width, int height);
+  void mousePressEvent(QMouseEvent *event);
+  void mouseMoveEvent(QMouseEvent *event);
+  void mouseReleaseEvent(QMouseEvent *event);
 
 private:
-    void makeObject();
+  void makeObject();
 
-    QColor clearColor;
-    QPoint lastPos;
-    int xRot;
-    int yRot;
-    int zRot;
-    GLuint textures[6];
-    QVector<QVector3D> vertices;
-    QVector<QVector2D> texCoords;
-    QOpenGLShaderProgram *program;
-    QOpenGLBuffer vertexBuffer;
-    QOpenGLBuffer texCoordBuffer;
-    QOpenGLVertexArrayObject vao;
+  QColor clearColor;
+  QPoint lastPos;
+  int xRot;
+  int yRot;
+  int zRot;
+  GLuint textures[6];
+  QVector<QVector3D> vertices;
+  QVector<QVector2D> texCoords;
+  QOpenGLShaderProgram *program;
+  QOpenGLBuffer vertexBuffer;
+  QOpenGLBuffer texCoordBuffer;
+  QOpenGLVertexArrayObject vao;
 
-    QString _texturePath;
-    QVector<QSharedPointer<QPixmap > > pixmaps;
+  QString _texturePath;
+  QVector<QSharedPointer<QPixmap > > pixmaps;
 };
 
 #endif
