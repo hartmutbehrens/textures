@@ -61,8 +61,6 @@ private:
 
   GLWidget *glWidgets[NumRows][NumColumns];
   GLWidget *currentGlWidget;
-
-  int destructinateCountDown;
 };
 
 #endif

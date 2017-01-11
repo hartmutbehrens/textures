@@ -81,12 +81,6 @@ void GLWidget::setClearColor(const QColor &color)
   updateGL();
 }
 
-void GLWidget::destructinatePixmaps()
-{
-  // QSharedPointer will dtor, and payload will also be deleted
-  this->pixmaps.clear();
-}
-
 void GLWidget::initializeGL()
 {
   initializeOpenGLFunctions();
@@ -183,7 +177,8 @@ void GLWidget::paintGL()
   program->setAttributeArray
       (PROGRAM_TEXCOORD_ATTRIBUTE, texCoords.constData());
 
-  glBindTexture(GL_TEXTURE_2D, textures[0]);
+  //glBindTexture(GL_TEXTURE_2D, textures[0]);
+  texture->bind();
   glBindFragDataLocation(program->programId(), 0, "fragColor");
   for (int i = 0; i < 6; ++i) {
     //glBindTexture(GL_TEXTURE_2D, textures[i]);
@@ -231,32 +226,9 @@ void GLWidget::makeObject()
     { { -1, -1, +1 }, { +1, -1, +1 }, { +1, +1, +1 }, { -1, +1, +1 } }
   };
 
-  // only load into memory once for this experiment
-  // move into loop to load N-times
-  this->pixmaps.push_back(QSharedPointer<QPixmap>(new QPixmap(_texturePath)));
-  // for this experiment, only bind the texture once (actually even if we bind multiple times, Qt sees the same pixmap, so returns same handle)
-  // default bind options are: LinearFilteringBindOption | InvertedYBindOption | MipmapBindOption
-  // for the experiment we are interested in memory use, so we disable the mirroring and mipmapping, both of which result in extra mem use CPU/GPU
-  textures[0] = bindTexture(*this->pixmaps[0], GL_TEXTURE_2D, GL_RGBA, QGLContext::LinearFilteringBindOption);
-  qDebug() << "TEXTURE HANDLE for this glwidget " << textures[0] << endl;
-
-  // destroy the pixmaps immediately
-  // you can comment this out if you would prefer to destroy manually by clicking three times
-  // this->pixmaps.clear();
-  // COMMENTED OUT: destroy manually by clicking three times!!!
-
-  for (int j=0; j < 6; ++j) {
-    //textures[j] = bindTexture(*this->pixmaps[0], GL_TEXTURE_2D);
-    //        textures[j] = bindTexture
-    //            (QPixmap(QString(":/images/side%1.png").arg(j + 1)), GL_TEXTURE_2D);
-  }
-
-  float pixmapBytes = 0;
-  foreach (const QSharedPointer<QPixmap>& pm, this->pixmaps){
-    pixmapBytes += pm->width() * pm->height() * pm->depth() / 8.0;
-  }
-
-  qDebug() << "GLWidget pixmap Mbytes " << pixmapBytes / 1024 / 1024;
+  texture = new QOpenGLTexture(QImage(_texturePath).mirrored());
+  texture->setMinificationFilter(QOpenGLTexture::LinearMipMapLinear);
+  texture->setMagnificationFilter(QOpenGLTexture::Linear);
 
   for (int i = 0; i < 6; ++i) {
     for (int j = 0; j < 4; ++j) {

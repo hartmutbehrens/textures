@@ -43,7 +43,7 @@
 #include "glwidget.h"
 #include "window.h"
 
-Window::Window() : destructinateCountDown(3)
+Window::Window()
 {
   QGridLayout *mainLayout = new QGridLayout;
 
@@ -85,21 +85,6 @@ Window::Window() : destructinateCountDown(3)
 void Window::setCurrentGlWidget()
 {
   currentGlWidget = qobject_cast<GLWidget *>(sender());
-  if (this->destructinateCountDown > 0) {
-    qDebug() << --this->destructinateCountDown << endl;
-  }
-
-  if (this->destructinateCountDown == 0) {
-    for (int i = 0; i < NumRows; ++i) {
-      for (int j = 0; j < NumColumns; ++j) {
-        glWidgets[i][j]->destructinatePixmaps();
-      }
-    }
-    this->destructinateCountDown = -1;
-    qDebug() << "pixmaps destructinated!" << endl;
-  }
-
-
 }
 
 void Window::rotateOneStep()

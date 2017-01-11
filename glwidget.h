@@ -60,8 +60,6 @@ public:
   void rotateBy(int xAngle, int yAngle, int zAngle);
   void setClearColor(const QColor &color);
 
-  void destructinatePixmaps();
-
 signals:
   void clicked();
 
@@ -81,16 +79,16 @@ private:
   int xRot;
   int yRot;
   int zRot;
-  GLuint textures[6];
+
   QVector<QVector3D> vertices;
   QVector<QVector2D> texCoords;
-  QOpenGLShaderProgram *program;
+  QOpenGLShaderProgram* program;
   QOpenGLBuffer vertexBuffer;
   QOpenGLBuffer texCoordBuffer;
   QOpenGLVertexArrayObject vao;
+  QOpenGLTexture* texture;
 
   QString _texturePath;
-  QVector<QSharedPointer<QPixmap > > pixmaps;
 };
 
 #endif
