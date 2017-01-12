@@ -69,6 +69,7 @@ Window::Window()
   setLayout(mainLayout);
 
   currentGlWidget = glWidgets[0][0];
+  previousGlWidget = NULL;
 
   QTimer *timer = new QTimer(this);
   connect(timer, SIGNAL(timeout()), this, SLOT(rotateOneStep()));
@@ -79,7 +80,12 @@ Window::Window()
 
 void Window::setCurrentGlWidget()
 {
+  previousGlWidget = currentGlWidget;
   currentGlWidget = qobject_cast<GLWidget *>(sender());
+
+  if (currentGlWidget == previousGlWidget) {
+    currentGlWidget->toggleRotationIndex();
+  }
 }
 
 void Window::rotateOneStep()

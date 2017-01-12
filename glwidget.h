@@ -58,6 +58,7 @@ public:
   QSize sizeHint() const;
   void rotateBy(int xAngle, int yAngle, int zAngle);
   void setClearColor(const QColor &color);
+  void toggleRotationIndex();
 
 signals:
   void clicked();
@@ -78,6 +79,7 @@ private:
   int xRot;
   int yRot;
   int zRot;
+  int rotIndex;
 
   QVector<QVector3D> vertices;
   QVector<QVector2D> texCoords;

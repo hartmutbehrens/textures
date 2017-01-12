@@ -61,6 +61,7 @@ private:
 
   GLWidget *glWidgets[NumRows][NumColumns];
   GLWidget *currentGlWidget;
+  GLWidget *previousGlWidget;
 };
 
 #endif
