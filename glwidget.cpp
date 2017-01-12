@@ -113,6 +113,13 @@ void GLWidget::initializeGL()
   QOpenGLShader *fshader = new QOpenGLShader(QOpenGLShader::Fragment, this);
   QString fsrc =
       "uniform sampler2D tex;\n"
+      "#ifdef GL_ES\n"
+      "#ifdef GL_FRAGMENT_PRECISION_HIGH\n"
+      "precision highp float;\n"
+      "#else\n"
+      "precision mediump float;\n"
+      "#endif\n"
+      "#endif\n"
       "in vec2 texc;\n"
       "out vec4 fragColor;\n"
       "void main(void)\n"
