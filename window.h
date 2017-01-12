@@ -62,6 +62,7 @@ private:
   GLWidget *glWidgets[NumRows][NumColumns];
   GLWidget *currentGlWidget;
   GLWidget *previousGlWidget;
+  int rotationSpeed;
 };
 
 #endif

@@ -196,7 +196,7 @@ void GLWidget::initializeGL()
 void GLWidget::paintGL()
 {
   glClearColor(clearColor.red(), clearColor.green(), clearColor.blue(), clearColor.alpha());
-  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
   QMatrix4x4 m;
   m.ortho(-0.5f, +0.5f, +0.5f, -0.5f, 4.0f, 15.0f);

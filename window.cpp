@@ -44,6 +44,8 @@
 #include "window.h"
 
 Window::Window()
+  : previousGlWidget(0),
+    rotationSpeed(2)
 {
   QGridLayout *mainLayout = new QGridLayout;
 
@@ -69,7 +71,6 @@ Window::Window()
   setLayout(mainLayout);
 
   currentGlWidget = glWidgets[0][0];
-  previousGlWidget = NULL;
 
   QTimer *timer = new QTimer(this);
   connect(timer, SIGNAL(timeout()), this, SLOT(rotateOneStep()));
@@ -85,12 +86,13 @@ void Window::setCurrentGlWidget()
 
   if (currentGlWidget == previousGlWidget) {
     currentGlWidget->toggleRotationIndex();
+    rotationSpeed = (rotationSpeed == 2) ? 8 : 2;
   }
 }
 
 void Window::rotateOneStep()
 {
   if (currentGlWidget) {
-    currentGlWidget->rotateBy(+2 * 16, +2 * 16, -1 * 16);
+    currentGlWidget->rotateBy(rotationSpeed * 16, rotationSpeed * 16, -1 * rotationSpeed * 16);
   }
 }
