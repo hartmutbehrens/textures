@@ -40,6 +40,7 @@
 
 #include <QtWidgets>
 #include <QtOpenGL>
+#include <QOpenGLContext>
 
 #include "glwidget.h"
 
@@ -97,8 +98,7 @@ void GLWidget::initializeGL()
 #define PROGRAM_TEXCOORD_ATTRIBUTE 1
 
   QOpenGLShader *vshader = new QOpenGLShader(QOpenGLShader::Vertex, this);
-  const char *vsrc =
-      "#version 150\n"
+  QString vsrc =
       "in vec4 vertex;\n"
       "in vec2 texCoord;\n"
       "out vec2 texc;\n"
@@ -109,11 +109,9 @@ void GLWidget::initializeGL()
       "    gl_Position = matrix * vertex;\n"
       "    texc = texCoord;\n"
       "}\n";
-  vshader->compileSourceCode(vsrc);
 
   QOpenGLShader *fshader = new QOpenGLShader(QOpenGLShader::Fragment, this);
-  const char *fsrc =
-      "#version 150\n"
+  QString fsrc =
       "uniform sampler2D tex;\n"
       "in vec2 texc;\n"
       "out vec4 fragColor;\n"
@@ -122,6 +120,17 @@ void GLWidget::initializeGL()
       "    fragColor = texture(tex, texc);\n"
       "    //fragColor = vec4(0.0, 0.0, 0.0, 0.0);\n"
       "}\n";
+
+  if (QOpenGLContext::currentContext()->isOpenGLES()) {
+    vsrc.prepend(QByteArrayLiteral("#version 300 es\n"));
+    fsrc.prepend(QByteArrayLiteral("#version 300 es\n"));
+  }
+  else {
+    vsrc.prepend(QByteArrayLiteral("#version 150\n"));
+    fsrc.prepend(QByteArrayLiteral("#version 150\n"));
+
+  }
+  vshader->compileSourceCode(vsrc);
   fshader->compileSourceCode(fsrc);
 
   program = new QOpenGLShaderProgram(this);

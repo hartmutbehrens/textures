@@ -40,6 +40,7 @@
 
 #include <QApplication>
 #include <QSurfaceFormat>
+#include <QOpenGLContext>
 
 #include "window.h"
 
@@ -50,7 +51,12 @@ int main(int argc, char *argv[])
   QApplication app(argc, argv);
 
   QSurfaceFormat format;
-  format.setVersion( 3, 2 );
+  if (QOpenGLContext::openGLModuleType() == QOpenGLContext::LibGL) {
+    format.setVersion( 3, 2 );
+  }
+  else {
+      format.setVersion(3, 0);
+  }
   format.setProfile( QSurfaceFormat::CoreProfile );
   QSurfaceFormat::setDefaultFormat(format);
   Window window;
