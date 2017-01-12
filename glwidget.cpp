@@ -102,17 +102,21 @@ void GLWidget::initializeGL()
       "in vec4 vertex;\n"
       "in vec2 texCoord;\n"
       "out vec2 texc;\n"
-      "\n"
-      "uniform mediump mat4 matrix;\n"
+      "//uniform mediump mat4 matrix;\n"
+      "struct VertexData {\n"
+      "  mediump mat4 rotMatrix;\n"
+      "};\n"
+      "layout(std140) uniform u_VertexData {\n"
+      "  VertexData vData;\n"
+      "};\n"
       "void main(void)\n"
       "{\n"
-      "    gl_Position = matrix * vertex;\n"
+      "    gl_Position = vData.rotMatrix * vertex;\n"
       "    texc = texCoord;\n"
       "}\n";
 
   QOpenGLShader *fshader = new QOpenGLShader(QOpenGLShader::Fragment, this);
   QString fsrc =
-      "uniform sampler2D tex;\n"
       "#ifdef GL_ES\n"
       "#ifdef GL_FRAGMENT_PRECISION_HIGH\n"
       "precision highp float;\n"
@@ -122,10 +126,10 @@ void GLWidget::initializeGL()
       "#endif\n"
       "in vec2 texc;\n"
       "out vec4 fragColor;\n"
+      "uniform sampler2D tex;\n"
       "void main(void)\n"
       "{\n"
       "    fragColor = texture(tex, texc);\n"
-      "    //fragColor = vec4(0.0, 0.0, 0.0, 0.0);\n"
       "}\n";
 
   if (QOpenGLContext::currentContext()->isOpenGLES()) {
@@ -149,6 +153,17 @@ void GLWidget::initializeGL()
 
   program->bind();
   program->setUniformValue("tex", 0);
+
+//  GLint numUniformBlocks = 0;
+//  GLsizei bufSize = 1024;
+//  GLsizei length;
+//  GLchar name[1024];
+//  glGetProgramiv(program->programId(), GL_ACTIVE_UNIFORM_BLOCKS, &numUniformBlocks);
+//  for (int i = 0; i < numUniformBlocks; i++) {
+//    glGetActiveUniformBlockName(program->programId(), i, bufSize, &length, name);
+//    GLint location = glGetUniformBlockIndex(program->programId(), name);
+//    qDebug( "%p Uniform block name:'%s' location:'%d'", this, name, location);
+//  }
 
   //create buffers
   vertexBuffer.create();
@@ -185,7 +200,18 @@ void GLWidget::paintGL()
   m.rotate(yRot / 16.0f, 0.0f, 1.0f, 0.0f);
   m.rotate(zRot / 16.0f, 0.0f, 0.0f, 1.0f);
 
-  program->setUniformValue("matrix", m);
+  GLint uboSize;
+  GLuint ubo;
+  GLuint uboIndex = glGetUniformBlockIndex(program->programId(), "u_VertexData");
+  if (uboIndex != GL_INVALID_INDEX) {
+    glGetActiveUniformBlockiv(program->programId(), uboIndex, GL_UNIFORM_BLOCK_DATA_SIZE, &uboSize);
+    glGenBuffers(1, &ubo);
+    glBindBuffer(GL_UNIFORM_BUFFER, ubo);
+    glBufferData(GL_UNIFORM_BUFFER, uboSize, m.constData(), GL_STATIC_DRAW);
+    glBindBufferBase(GL_UNIFORM_BUFFER, uboIndex, ubo);
+  }
+
+  //program->setUniformValue("matrix", m);
   program->enableAttributeArray(PROGRAM_VERTEX_ATTRIBUTE);
   program->enableAttributeArray(PROGRAM_TEXCOORD_ATTRIBUTE);
   program->setAttributeArray
