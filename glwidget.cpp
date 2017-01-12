@@ -43,8 +43,8 @@
 
 #include "glwidget.h"
 
-GLWidget::GLWidget(const QString& texturePath, QWidget *parent, QGLWidget *shareWidget)
-  : QGLWidget(parent, shareWidget), _texturePath(texturePath)
+GLWidget::GLWidget(const QString& texturePath, QWidget *parent)
+  : QOpenGLWidget(parent), _texturePath(texturePath)
 {
   clearColor = Qt::black;
   xRot = 0;
@@ -72,13 +72,13 @@ void GLWidget::rotateBy(int xAngle, int yAngle, int zAngle)
   xRot += xAngle;
   yRot += yAngle;
   zRot += zAngle;
-  updateGL();
+  update();
 }
 
 void GLWidget::setClearColor(const QColor &color)
 {
   clearColor = color;
-  updateGL();
+  update();
 }
 
 void GLWidget::initializeGL()

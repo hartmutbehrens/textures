@@ -39,6 +39,7 @@
 ****************************************************************************/
 
 #include <QApplication>
+#include <QSurfaceFormat>
 
 #include "window.h"
 
@@ -47,6 +48,11 @@ int main(int argc, char *argv[])
   Q_INIT_RESOURCE(textures);
 
   QApplication app(argc, argv);
+
+  QSurfaceFormat format;
+  format.setVersion( 3, 2 );
+  format.setProfile( QSurfaceFormat::CoreProfile );
+  QSurfaceFormat::setDefaultFormat(format);
   Window window;
   window.show();
   return app.exec();

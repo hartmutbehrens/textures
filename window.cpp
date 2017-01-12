@@ -49,10 +49,6 @@ Window::Window()
 
   QStringList texturePaths = QStringList() << QString(":/images/side1.png") << QString(":/images/side2.png") << QString(":/images/side3.png") << QString(":/images/side4.png") << QString(":/images/side5.png") << QString(":/images/side6.png");
 
-  QGLFormat glFormat;
-  glFormat.setVersion( 3, 2 );
-  glFormat.setProfile( QGLFormat::CoreProfile );
-
   int c = 0;
   for (int i = 0; i < NumRows; ++i) {
     for (int j = 0; j < NumColumns; ++j) {
@@ -61,8 +57,7 @@ Window::Window()
                         / (NumRows * NumColumns - 1),
                         255, 63);
 
-      glWidgets[i][j] = new GLWidget(texturePaths[c], 0, 0);
-      glWidgets[i][j]->setFormat(glFormat);
+      glWidgets[i][j] = new GLWidget(texturePaths[c]);
       glWidgets[i][j]->setClearColor(clearColor);
       glWidgets[i][j]->rotateBy(+42 * 16, +42 * 16, -21 * 16);
       mainLayout->addWidget(glWidgets[i][j], i, j);

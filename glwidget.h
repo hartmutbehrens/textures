@@ -42,17 +42,16 @@
 #define GLWIDGET_H
 
 #include <QtWidgets>
-#include <QGLWidget>
 #include <QOpenGLFunctions>
 
 QT_FORWARD_DECLARE_CLASS(QGLShaderProgram);
 
-class GLWidget : public QGLWidget, protected QOpenGLFunctions
+class GLWidget : public QOpenGLWidget, protected QOpenGLFunctions
 {
   Q_OBJECT
 
 public:
-  explicit GLWidget(const QString& texturePath, QWidget *parent = 0, QGLWidget *shareWidget = 0);
+  explicit GLWidget(const QString& texturePath, QWidget *parent = 0);
   ~GLWidget();
 
   QSize minimumSizeHint() const;
