@@ -186,11 +186,8 @@ void GLWidget::paintGL()
   program->setAttributeArray
       (PROGRAM_TEXCOORD_ATTRIBUTE, texCoords.constData());
 
-  //glBindTexture(GL_TEXTURE_2D, textures[0]);
   texture->bind();
-  glBindFragDataLocation(program->programId(), 0, "fragColor");
   for (int i = 0; i < 6; ++i) {
-    //glBindTexture(GL_TEXTURE_2D, textures[i]);
     glDrawArrays(GL_TRIANGLE_FAN, i * 4, 4);
   }
 }
