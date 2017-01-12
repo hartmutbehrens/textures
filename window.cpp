@@ -60,6 +60,7 @@ Window::Window()
                         255, 63);
 
       glWidgets[i][j] = new GLWidget(texturePaths[c]);
+      glWidgets[i][j]->setUpdateBehavior(QOpenGLWidget::PartialUpdate);
       glWidgets[i][j]->setClearColor(clearColor);
       glWidgets[i][j]->rotateBy(+42 * 16, +42 * 16, -21 * 16);
       mainLayout->addWidget(glWidgets[i][j], i, j);
