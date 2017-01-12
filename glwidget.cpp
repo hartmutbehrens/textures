@@ -52,12 +52,14 @@ GLWidget::GLWidget(const QString& texturePath, QWidget *parent)
     zRot(0),
     rotIndex(0),
     program(0),
+    buffer(0),
     _texturePath(texturePath)
 {
 }
 
 GLWidget::~GLWidget()
 {
+  free(buffer);
 }
 
 QSize GLWidget::minimumSizeHint() const
@@ -91,10 +93,9 @@ void GLWidget::initializeGL()
   makeObject();
 
   glEnable(GL_DEPTH_TEST);
+  glEnable(GL_STENCIL_TEST);
   glEnable(GL_CULL_FACE);
-#ifdef GL_TEXTURE_2D
   glEnable(GL_TEXTURE_2D);
-#endif
 
 #define PROGRAM_VERTEX_ATTRIBUTE 0
 #define PROGRAM_TEXCOORD_ATTRIBUTE 1
@@ -212,13 +213,16 @@ void GLWidget::paintGL()
   n.rotate(-yRot / 16.0f, 0.0f, 1.0f, 0.0f);
   n.rotate(-zRot / 16.0f, 0.0f, 0.0f, 1.0f);
 
-  float* buffer = NULL;
+
   GLint uboSize;
   GLuint ubo;
   GLuint uboIndex = glGetUniformBlockIndex(program->programId(), "u_VertexData");
   if (uboIndex != GL_INVALID_INDEX) {
     glGetActiveUniformBlockiv(program->programId(), uboIndex, GL_UNIFORM_BLOCK_DATA_SIZE, &uboSize);
-    buffer = static_cast<float*>(malloc(uboSize));
+    if(buffer == 0) {
+      buffer = static_cast<float*>(malloc(uboSize));
+    }
+
     memcpy(buffer, m.constData(), 16*sizeof(float));
     memcpy(buffer + 16, n.constData(), 16*sizeof(float));
 
@@ -239,7 +243,6 @@ void GLWidget::paintGL()
   for (int i = 0; i < 6; ++i) {
     glDrawArrays(GL_TRIANGLE_FAN, i * 4, 4);
   }
-  free(buffer);
 }
 
 void GLWidget::toggleRotationIndex()
