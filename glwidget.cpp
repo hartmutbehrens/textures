@@ -59,7 +59,14 @@ GLWidget::GLWidget(const QString& texturePath, QWidget *parent)
 
 GLWidget::~GLWidget()
 {
+  makeCurrent();
   free(buffer);
+  texCoordBuffer.destroy();
+  vertexBuffer.destroy();
+  vao.destroy();
+  delete texture;
+  delete program;
+  doneCurrent();
 }
 
 QSize GLWidget::minimumSizeHint() const
@@ -96,6 +103,7 @@ void GLWidget::initializeGL()
   glEnable(GL_STENCIL_TEST);
   glEnable(GL_CULL_FACE);
   glEnable(GL_TEXTURE_2D);
+  glViewport(0, 0, width(), height());
 
 #define PROGRAM_VERTEX_ATTRIBUTE 0
 #define PROGRAM_TEXCOORD_ATTRIBUTE 1
@@ -106,6 +114,11 @@ void GLWidget::initializeGL()
       "in vec2 texCoord;\n"
       "out vec2 texc;\n"
       "uniform int rotIndex;\n"
+      "\n"
+      "int getRotoationIndex(void);\n"
+      "mediump mat4 getRotationMatrix(int Index);\n"
+      "mediump mat4 getRotationMatrix(void);\n"
+      "\n"
       "struct VertexData {\n"
       "  mediump mat4 rotMatrix;\n"
       "};\n"
@@ -113,7 +126,9 @@ void GLWidget::initializeGL()
       "  VertexData vData[2];\n"
       "};\n"
       "\n"
-      "mediump mat4 getRotationMatrix(void)       { return vData[rotIndex].rotMatrix; }\n"
+      "int getRotationIndex(void)                 { return rotIndex; }\n"
+      "mediump mat4 getRotationMatrix(int Index)  { return vData[Index].rotMatrix; }\n"
+      "mediump mat4 getRotationMatrix(void)       { return getRotationMatrix(getRotationIndex()); }\n"
       "\n"
       "void main(void)\n"
       "{\n"
@@ -160,17 +175,6 @@ void GLWidget::initializeGL()
   program->bind();
   program->setUniformValue("tex", 0);
 
-//  GLint numUniformBlocks = 0;
-//  GLsizei bufSize = 1024;
-//  GLsizei length;
-//  GLchar name[1024];
-//  glGetProgramiv(program->programId(), GL_ACTIVE_UNIFORM_BLOCKS, &numUniformBlocks);
-//  for (int i = 0; i < numUniformBlocks; i++) {
-//    glGetActiveUniformBlockName(program->programId(), i, bufSize, &length, name);
-//    GLint location = glGetUniformBlockIndex(program->programId(), name);
-//    qDebug( "%p Uniform block name:'%s' location:'%d'", this, name, location);
-//  }
-
   //create buffers
   vertexBuffer.create();
   vertexBuffer.bind();
@@ -191,7 +195,6 @@ void GLWidget::initializeGL()
 
   program->enableAttributeArray(program->attributeLocation("vertex"));
   program->enableAttributeArray(program->attributeLocation("texCoord"));
-
 }
 
 void GLWidget::paintGL()
@@ -206,13 +209,8 @@ void GLWidget::paintGL()
   m.rotate(yRot / 16.0f, 0.0f, 1.0f, 0.0f);
   m.rotate(zRot / 16.0f, 0.0f, 0.0f, 1.0f);
 
-  QMatrix4x4 n;
-  n.ortho(-0.5f, +0.5f, +0.5f, -0.5f, 4.0f, 15.0f);
-  n.translate(0.0f, 0.0f, -10.0f);
-  n.rotate(-xRot / 16.0f, 1.0f, 0.0f, 0.0f);
-  n.rotate(-yRot / 16.0f, 0.0f, 1.0f, 0.0f);
-  n.rotate(-zRot / 16.0f, 0.0f, 0.0f, 1.0f);
-
+  QMatrix4x4 n = m;
+  n.scale(0.5, 0.5, 0.5);
 
   GLint uboSize;
   GLuint ubo;
@@ -297,11 +295,8 @@ void GLWidget::makeObject()
 
   for (int i = 0; i < 6; ++i) {
     for (int j = 0; j < 4; ++j) {
-      texCoords.append
-          (QVector2D(j == 0 || j == 3, j == 0 || j == 1));
-      vertices.append
-          (QVector3D(0.2 * coords[i][j][0], 0.2 * coords[i][j][1],
-          0.2 * coords[i][j][2]));
+      texCoords.append(QVector2D(j == 0 || j == 3, j == 0 || j == 1));
+      vertices.append(QVector3D(0.2 * coords[i][j][0], 0.2 * coords[i][j][1], 0.2 * coords[i][j][2]));
     }
   }
 }

@@ -48,21 +48,16 @@ Window::Window()
     rotationSpeed(2)
 {
   QGridLayout *mainLayout = new QGridLayout;
-
   QStringList texturePaths = QStringList() << QString(":/images/side1.png") << QString(":/images/side2.png") << QString(":/images/side3.png") << QString(":/images/side4.png") << QString(":/images/side5.png") << QString(":/images/side6.png");
 
   int c = 0;
   for (int i = 0; i < NumRows; ++i) {
     for (int j = 0; j < NumColumns; ++j) {
       QColor clearColor;
-      clearColor.setHsv(((i * NumColumns) + j) * 255
-                        / (NumRows * NumColumns - 1),
-                        255, 63);
+      clearColor.setHsv(((i * NumColumns) + j) * 255 / (NumRows * NumColumns - 1), 255, 63);
 
       glWidgets[i][j] = new GLWidget(texturePaths[c]);
-      glWidgets[i][j]->setUpdateBehavior(QOpenGLWidget::PartialUpdate);
       glWidgets[i][j]->setClearColor(clearColor);
-      glWidgets[i][j]->rotateBy(+42 * 16, +42 * 16, -21 * 16);
       mainLayout->addWidget(glWidgets[i][j], i, j);
 
       connect(glWidgets[i][j], SIGNAL(clicked()), this, SLOT(setCurrentGlWidget()));
@@ -88,6 +83,9 @@ void Window::setCurrentGlWidget()
   if (currentGlWidget == previousGlWidget) {
     currentGlWidget->toggleRotationIndex();
     rotationSpeed = (rotationSpeed == 2) ? 8 : 2;
+  }
+  else {
+    rotationSpeed = 2;
   }
 }
 
