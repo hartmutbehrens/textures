@@ -40,8 +40,8 @@
 
 #include <QtWidgets>
 
-#include "glwidget.h"
-#include "window.h"
+#include "GLWidget.h"
+#include "Window.h"
 
 Window::Window()
   : previousGlWidget(0),

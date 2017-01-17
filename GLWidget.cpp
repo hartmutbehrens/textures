@@ -42,7 +42,7 @@
 #include <QtOpenGL>
 #include <QOpenGLContext>
 
-#include "glwidget.h"
+#include "GLWidget.h"
 
 GLWidget::GLWidget(const QString& texturePath, QWidget *parent)
   : QOpenGLWidget(parent),

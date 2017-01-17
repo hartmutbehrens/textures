@@ -1,8 +1,9 @@
-HEADERS       = glwidget.h \
-                window.h
-SOURCES       = glwidget.cpp \
-                main.cpp \
-                window.cpp
+HEADERS = GLWidget.h \
+          Window.h
+SOURCES = GLWidget.cpp \
+          Window.cpp \
+          main.cpp
+
 RESOURCES     = textures.qrc
 QT           += opengl widgets
 

@@ -42,7 +42,7 @@
 #include <QSurfaceFormat>
 #include <QOpenGLContext>
 
-#include "window.h"
+#include "Window.h"
 
 int main(int argc, char *argv[])
 {
