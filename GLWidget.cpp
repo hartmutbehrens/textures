@@ -166,11 +166,20 @@ void GLWidget::initializeGL()
   fshader->compileSourceCode(fsrc);
 
   program = new QOpenGLShaderProgram(this);
-  program->addShader(vshader);
-  program->addShader(fshader);
+  if (!program->addShader(vshader)) {
+    qWarning() << program->log();
+    exit(EXIT_FAILURE);
+  }
+  if (!program->addShader(fshader)) {
+    qWarning() << program->log();
+    exit(EXIT_FAILURE);
+  }
   program->bindAttributeLocation("vertex", PROGRAM_VERTEX_ATTRIBUTE);
   program->bindAttributeLocation("texCoord", PROGRAM_TEXCOORD_ATTRIBUTE);
-  program->link();
+  if (!program->link()) {
+    qWarning() << program->log();
+    exit(EXIT_FAILURE);
+  }
 
   program->bind();
   program->setUniformValue("tex", 0);
