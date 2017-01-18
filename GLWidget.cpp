@@ -105,6 +105,17 @@ void GLWidget::initializeGL()
   glEnable(GL_TEXTURE_2D);
   glViewport(0, 0, width(), height());
 
+  GLint MaxUniformBlockBindings = 0;
+  GLint MaxUniformBlocksVert = 0;
+  GLint MaxUniformBlocksFrag = 0;
+  GLint MaxUniformBlockSize = 0;
+
+  glGetIntegerv( GL_MAX_UNIFORM_BUFFER_BINDINGS, &MaxUniformBlockBindings);
+  glGetIntegerv( GL_MAX_VERTEX_UNIFORM_BLOCKS, &MaxUniformBlocksVert);
+  glGetIntegerv( GL_MAX_FRAGMENT_UNIFORM_BLOCKS, &MaxUniformBlocksFrag);
+  glGetIntegerv(GL_MAX_UNIFORM_BLOCK_SIZE, &MaxUniformBlockSize);
+  qDebug("max bindings: %d, max blocks per shader: (%d,%d), max block size per UBO: %d", MaxUniformBlockBindings, MaxUniformBlocksVert, MaxUniformBlocksFrag, MaxUniformBlockSize);
+
 #define PROGRAM_VERTEX_ATTRIBUTE 0
 #define PROGRAM_TEXCOORD_ATTRIBUTE 1
 
