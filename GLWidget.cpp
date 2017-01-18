@@ -109,12 +109,16 @@ void GLWidget::initializeGL()
   GLint MaxUniformBlocksVert = 0;
   GLint MaxUniformBlocksFrag = 0;
   GLint MaxUniformBlockSize = 0;
+  GLint MaxUniformVectorsVert = 0;
+  GLint MaxUniformComponentsVert = 0;
 
   glGetIntegerv( GL_MAX_UNIFORM_BUFFER_BINDINGS, &MaxUniformBlockBindings);
   glGetIntegerv( GL_MAX_VERTEX_UNIFORM_BLOCKS, &MaxUniformBlocksVert);
   glGetIntegerv( GL_MAX_FRAGMENT_UNIFORM_BLOCKS, &MaxUniformBlocksFrag);
   glGetIntegerv(GL_MAX_UNIFORM_BLOCK_SIZE, &MaxUniformBlockSize);
-  qDebug("max bindings: %d, max blocks per shader: (%d,%d), max block size per UBO: %d", MaxUniformBlockBindings, MaxUniformBlocksVert, MaxUniformBlocksFrag, MaxUniformBlockSize);
+  glGetIntegerv(GL_MAX_VERTEX_UNIFORM_VECTORS, &MaxUniformVectorsVert);
+  glGetIntegerv(GL_MAX_VERTEX_UNIFORM_COMPONENTS, &MaxUniformComponentsVert);
+  qDebug("max bindings: %d, max blocks per shader: (%d,%d), max block size per UBO: %d, max vectors: %d, max components: %d", MaxUniformBlockBindings, MaxUniformBlocksVert, MaxUniformBlocksFrag, MaxUniformBlockSize, MaxUniformVectorsVert, MaxUniformComponentsVert);
 
 #define PROGRAM_VERTEX_ATTRIBUTE 0
 #define PROGRAM_TEXCOORD_ATTRIBUTE 1
@@ -134,7 +138,7 @@ void GLWidget::initializeGL()
       "  mediump mat4 rotMatrix;\n"
       "};\n"
       "layout(std140) uniform u_VertexData {\n"
-      "  VertexData vData[2];\n"
+      "  VertexData vData[64];\n"
       "};\n"
       "\n"
       "int getRotationIndex(void)                 { return rotIndex; }\n"
@@ -191,6 +195,10 @@ void GLWidget::initializeGL()
     qWarning() << program->log();
     exit(EXIT_FAILURE);
   }
+
+  //GLint blockSize = 0;
+  //glGetActiveUniformBlockiv(program->programId(), 0, GL_UNIFORM_BLOCK_DATA_SIZE, &blockSize);
+  //qDebug("UBO size: %d", blockSize);
 
   program->bind();
   program->setUniformValue("tex", 0);
