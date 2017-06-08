@@ -51,21 +51,23 @@ GLWidget::GLWidget(const QString& texturePath, QWidget *parent)
     yRot(0),
     zRot(0),
     rotIndex(0),
-    program(0),
-    buffer(0),
-    _texturePath(texturePath)
+    _program(0),
+    _buffer(0),
+    _texturePath(texturePath),
+    _ubo(0),
+    _uboIndex(0),
+    _f(0)
 {
 }
 
 GLWidget::~GLWidget()
 {
   makeCurrent();
-  free(buffer);
-  texCoordBuffer.destroy();
-  vertexBuffer.destroy();
-  vao.destroy();
-  delete texture;
-  delete program;
+  free(_buffer);
+  _vbo.destroy();
+  _vao.destroy();
+  delete _texture;
+  delete _program;
   doneCurrent();
 }
 
@@ -96,6 +98,7 @@ void GLWidget::setClearColor(const QColor &color)
 void GLWidget::initializeGL()
 {
   initializeOpenGLFunctions();
+  _f = QOpenGLContext::currentContext()->extraFunctions();
 
   makeObject();
 
@@ -104,21 +107,6 @@ void GLWidget::initializeGL()
   glEnable(GL_CULL_FACE);
   glEnable(GL_TEXTURE_2D);
   glViewport(0, 0, width(), height());
-
-  GLint MaxUniformBlockBindings = 0;
-  GLint MaxUniformBlocksVert = 0;
-  GLint MaxUniformBlocksFrag = 0;
-  GLint MaxUniformBlockSize = 0;
-  GLint MaxUniformVectorsVert = 0;
-  GLint MaxUniformComponentsVert = 0;
-
-  glGetIntegerv( GL_MAX_UNIFORM_BUFFER_BINDINGS, &MaxUniformBlockBindings);
-  glGetIntegerv( GL_MAX_VERTEX_UNIFORM_BLOCKS, &MaxUniformBlocksVert);
-  glGetIntegerv( GL_MAX_FRAGMENT_UNIFORM_BLOCKS, &MaxUniformBlocksFrag);
-  glGetIntegerv(GL_MAX_UNIFORM_BLOCK_SIZE, &MaxUniformBlockSize);
-  glGetIntegerv(GL_MAX_VERTEX_UNIFORM_VECTORS, &MaxUniformVectorsVert);
-  glGetIntegerv(GL_MAX_VERTEX_UNIFORM_COMPONENTS, &MaxUniformComponentsVert);
-  qDebug("max bindings: %d, max blocks per shader: (%d,%d), max block size per UBO: %d, max vectors: %d, max components: %d", MaxUniformBlockBindings, MaxUniformBlocksVert, MaxUniformBlocksFrag, MaxUniformBlockSize, MaxUniformVectorsVert, MaxUniformComponentsVert);
 
 #define PROGRAM_VERTEX_ATTRIBUTE 0
 #define PROGRAM_TEXCOORD_ATTRIBUTE 1
@@ -131,23 +119,24 @@ void GLWidget::initializeGL()
       "uniform int rotIndex;\n"
       "\n"
       "int getRotoationIndex(void);\n"
-      "mediump mat4 getRotationMatrix(int Index);\n"
-      "mediump mat4 getRotationMatrix(void);\n"
+      "mat4 getRotationMatrix(int Index);\n"
+      "mat4 getRotationMatrix(void);\n"
       "\n"
       "struct VertexData {\n"
-      "  mediump mat4 rotMatrix;\n"
+      "  mat4 rotMatrix;\n"
       "};\n"
       "layout(std140) uniform u_VertexData {\n"
       "  VertexData vData[64];\n"
       "};\n"
       "\n"
-      "int getRotationIndex(void)                 { return rotIndex; }\n"
-      "mediump mat4 getRotationMatrix(int Index)  { return vData[Index].rotMatrix; }\n"
-      "mediump mat4 getRotationMatrix(void)       { return getRotationMatrix(getRotationIndex()); }\n"
+      "int getRotationIndex(void)         { return rotIndex; }\n"
+      "mat4 getRotationMatrix(int Index)  { return vData[Index].rotMatrix; }\n"
+      "mat4 getRotationMatrix(void)       { return getRotationMatrix(getRotationIndex()); }\n"
       "\n"
       "void main(void)\n"
       "{\n"
-      "    gl_Position = getRotationMatrix() * vertex;\n"
+      "    mat4 rotMatrix = getRotationMatrix(rotIndex);\n"
+      "    gl_Position = rotMatrix * vertex;\n"
       "    texc = texCoord;\n"
       "}\n";
 
@@ -156,8 +145,10 @@ void GLWidget::initializeGL()
       "#ifdef GL_ES\n"
       "#ifdef GL_FRAGMENT_PRECISION_HIGH\n"
       "precision highp float;\n"
+      "precision highp sampler2D;\n"
       "#else\n"
       "precision mediump float;\n"
+      "precision mediump sampler2D;\n"
       "#endif\n"
       "#endif\n"
       "in vec2 texc;\n"
@@ -180,37 +171,46 @@ void GLWidget::initializeGL()
   vshader->compileSourceCode(vsrc);
   fshader->compileSourceCode(fsrc);
 
-  program = new QOpenGLShaderProgram(this);
-  if (!program->addShader(vshader)) {
-    qWarning() << program->log();
+  _program = new QOpenGLShaderProgram(this);
+  if (!_program->addShader(vshader)) {
+    qWarning() << _program->log();
     exit(EXIT_FAILURE);
   }
-  if (!program->addShader(fshader)) {
-    qWarning() << program->log();
+  if (!_program->addShader(fshader)) {
+    qWarning() << _program->log();
     exit(EXIT_FAILURE);
   }
-  program->bindAttributeLocation("vertex", PROGRAM_VERTEX_ATTRIBUTE);
-  program->bindAttributeLocation("texCoord", PROGRAM_TEXCOORD_ATTRIBUTE);
-  if (!program->link()) {
-    qWarning() << program->log();
+  _program->bindAttributeLocation("vertex", PROGRAM_VERTEX_ATTRIBUTE);
+  _program->bindAttributeLocation("texCoord", PROGRAM_TEXCOORD_ATTRIBUTE);
+  if (!_program->link()) {
+    qWarning() << _program->log();
     exit(EXIT_FAILURE);
   }
 
-  //GLint blockSize = 0;
-  //glGetActiveUniformBlockiv(program->programId(), 0, GL_UNIFORM_BLOCK_DATA_SIZE, &blockSize);
-  //qDebug("UBO size: %d", blockSize);
-
-  program->bind();
-  program->setUniformValue("tex", 0);
+  _program->bind();
+  _program->setUniformValue("tex", 0);
 
   //create VAO
-  vao.create();
-  vao.bind();
+  _vao.create();
+  _vao.bind();
+
+  glGenBuffers(1, &_ubo);
+
+  _uboIndex = _f->glGetUniformBlockIndex(_program->programId(), "u_VertexData");
+  if (_uboIndex == GL_INVALID_INDEX) {
+    qWarning("u_VertexData uniform block index could not be determined.");
+    exit(EXIT_FAILURE);
+  }
+  else {
+    _f->glGetActiveUniformBlockiv(_program->programId(), _uboIndex, GL_UNIFORM_BLOCK_DATA_SIZE, &_uboSize);
+    if(_buffer == 0) {
+      _buffer = static_cast<float*>(malloc(_uboSize));
+    }
+  }
 }
 
 void GLWidget::paintGL()
 {
-  QOpenGLExtraFunctions *f = QOpenGLContext::currentContext()->extraFunctions();
   glClearColor(clearColor.red(), clearColor.green(), clearColor.blue(), clearColor.alpha());
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
@@ -224,30 +224,20 @@ void GLWidget::paintGL()
   QMatrix4x4 n = m;
   n.scale(0.5, 0.5, 0.5);
 
-  GLint uboSize;
-  GLuint ubo;
-  GLuint uboIndex = f->glGetUniformBlockIndex(program->programId(), "u_VertexData");
-  if (uboIndex != GL_INVALID_INDEX) {
-    f->glGetActiveUniformBlockiv(program->programId(), uboIndex, GL_UNIFORM_BLOCK_DATA_SIZE, &uboSize);
-    if(buffer == 0) {
-      buffer = static_cast<float*>(malloc(uboSize));
-    }
+  memcpy(_buffer, m.constData(), 16*sizeof(float));
+  memcpy(_buffer + 16, n.constData(), 16*sizeof(float));
 
-    memcpy(buffer, m.constData(), 16*sizeof(float));
-    memcpy(buffer + 16, n.constData(), 16*sizeof(float));
+  glBindBuffer(GL_UNIFORM_BUFFER, _ubo);
+  glBufferData(GL_UNIFORM_BUFFER, _uboSize, _buffer, GL_STATIC_DRAW);
+  _f->glBindBufferBase(GL_UNIFORM_BUFFER, _uboIndex, _ubo);
 
-    glGenBuffers(1, &ubo);
-    glBindBuffer(GL_UNIFORM_BUFFER, ubo);
-    glBufferData(GL_UNIFORM_BUFFER, uboSize, buffer, GL_STATIC_DRAW);
-    f->glBindBufferBase(GL_UNIFORM_BUFFER, uboIndex, ubo);
-  }
-  program->setUniformValue("rotIndex", rotIndex);
-  program->enableAttributeArray(PROGRAM_VERTEX_ATTRIBUTE);
-  program->enableAttributeArray(PROGRAM_TEXCOORD_ATTRIBUTE);
-  program->setAttributeBuffer(PROGRAM_VERTEX_ATTRIBUTE, GL_FLOAT, 0, 3, 5 * sizeof(GLfloat));
-  program->setAttributeBuffer(PROGRAM_TEXCOORD_ATTRIBUTE, GL_FLOAT, 3 * sizeof(GLfloat), 2, 5 * sizeof(GLfloat));
+  _program->setUniformValue("rotIndex", rotIndex);
+  _program->enableAttributeArray(PROGRAM_VERTEX_ATTRIBUTE);
+  _program->enableAttributeArray(PROGRAM_TEXCOORD_ATTRIBUTE);
+  _program->setAttributeBuffer(PROGRAM_VERTEX_ATTRIBUTE, GL_FLOAT, 0, 3, 5 * sizeof(GLfloat));
+  _program->setAttributeBuffer(PROGRAM_TEXCOORD_ATTRIBUTE, GL_FLOAT, 3 * sizeof(GLfloat), 2, 5 * sizeof(GLfloat));
 
-  texture->bind();
+  _texture->bind();
   for (int i = 0; i < 6; ++i) {
     glDrawArrays(GL_TRIANGLE_FAN, i * 4, 4);
   }
@@ -299,9 +289,9 @@ void GLWidget::makeObject()
     { { -1, -1, +1 }, { +1, -1, +1 }, { +1, +1, +1 }, { -1, +1, +1 } }
   };
 
-  texture = new QOpenGLTexture(QImage(_texturePath).mirrored());
-  texture->setMinificationFilter(QOpenGLTexture::LinearMipMapLinear);
-  texture->setMagnificationFilter(QOpenGLTexture::Linear);
+  _texture = new QOpenGLTexture(QImage(_texturePath).mirrored());
+  _texture->setMinificationFilter(QOpenGLTexture::LinearMipMapLinear);
+  _texture->setMagnificationFilter(QOpenGLTexture::Linear);
 
   QVector<GLfloat> vertData;
   for (int i = 0; i < 6; ++i) {
@@ -317,7 +307,7 @@ void GLWidget::makeObject()
   }
 
   //create buffers
-  vertexBuffer.create();
-  vertexBuffer.bind();
-  vertexBuffer.allocate(vertData.constData(), vertData.count() * sizeof(GLfloat));
+  _vbo.create();
+  _vbo.bind();
+  _vbo.allocate(vertData.constData(), vertData.count() * sizeof(GLfloat));
 }
