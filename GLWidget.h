@@ -81,8 +81,6 @@ private:
   int zRot;
   int rotIndex;
 
-  QVector<QVector3D> vertices;
-  QVector<QVector2D> texCoords;
   QOpenGLShaderProgram* program;
   QOpenGLBuffer vertexBuffer;
   QOpenGLBuffer texCoordBuffer;

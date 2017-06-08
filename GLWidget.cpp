@@ -203,30 +203,14 @@ void GLWidget::initializeGL()
   program->bind();
   program->setUniformValue("tex", 0);
 
-  //create buffers
-  vertexBuffer.create();
-  vertexBuffer.bind();
-  vertexBuffer.setUsagePattern(QOpenGLBuffer::StaticDraw);
-  vertexBuffer.write(0, vertices.constData(), vertices.size() * sizeof(QVector3D));
-
-  texCoordBuffer.create();
-  texCoordBuffer.bind();
-  texCoordBuffer.setUsagePattern(QOpenGLBuffer::StaticDraw);
-  texCoordBuffer.write(0, texCoords.constData(), texCoords.size() * sizeof(QVector3D));
-
   //create VAO
   vao.create();
   vao.bind();
-
-  program->setAttributeBuffer(program->attributeLocation("vertex"), GL_FLOAT, 0, 3, sizeof(vertices));
-  program->setAttributeBuffer(program->attributeLocation("texCoord"), GL_FLOAT, 0, 2, sizeof(texCoords));
-
-  program->enableAttributeArray(program->attributeLocation("vertex"));
-  program->enableAttributeArray(program->attributeLocation("texCoord"));
 }
 
 void GLWidget::paintGL()
 {
+  QOpenGLExtraFunctions *f = QOpenGLContext::currentContext()->extraFunctions();
   glClearColor(clearColor.red(), clearColor.green(), clearColor.blue(), clearColor.alpha());
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
@@ -242,9 +226,9 @@ void GLWidget::paintGL()
 
   GLint uboSize;
   GLuint ubo;
-  GLuint uboIndex = glGetUniformBlockIndex(program->programId(), "u_VertexData");
+  GLuint uboIndex = f->glGetUniformBlockIndex(program->programId(), "u_VertexData");
   if (uboIndex != GL_INVALID_INDEX) {
-    glGetActiveUniformBlockiv(program->programId(), uboIndex, GL_UNIFORM_BLOCK_DATA_SIZE, &uboSize);
+    f->glGetActiveUniformBlockiv(program->programId(), uboIndex, GL_UNIFORM_BLOCK_DATA_SIZE, &uboSize);
     if(buffer == 0) {
       buffer = static_cast<float*>(malloc(uboSize));
     }
@@ -255,15 +239,13 @@ void GLWidget::paintGL()
     glGenBuffers(1, &ubo);
     glBindBuffer(GL_UNIFORM_BUFFER, ubo);
     glBufferData(GL_UNIFORM_BUFFER, uboSize, buffer, GL_STATIC_DRAW);
-    glBindBufferBase(GL_UNIFORM_BUFFER, uboIndex, ubo);
+    f->glBindBufferBase(GL_UNIFORM_BUFFER, uboIndex, ubo);
   }
   program->setUniformValue("rotIndex", rotIndex);
   program->enableAttributeArray(PROGRAM_VERTEX_ATTRIBUTE);
   program->enableAttributeArray(PROGRAM_TEXCOORD_ATTRIBUTE);
-  program->setAttributeArray
-      (PROGRAM_VERTEX_ATTRIBUTE, vertices.constData());
-  program->setAttributeArray
-      (PROGRAM_TEXCOORD_ATTRIBUTE, texCoords.constData());
+  program->setAttributeBuffer(PROGRAM_VERTEX_ATTRIBUTE, GL_FLOAT, 0, 3, 5 * sizeof(GLfloat));
+  program->setAttributeBuffer(PROGRAM_TEXCOORD_ATTRIBUTE, GL_FLOAT, 3 * sizeof(GLfloat), 2, 5 * sizeof(GLfloat));
 
   texture->bind();
   for (int i = 0; i < 6; ++i) {
@@ -321,10 +303,21 @@ void GLWidget::makeObject()
   texture->setMinificationFilter(QOpenGLTexture::LinearMipMapLinear);
   texture->setMagnificationFilter(QOpenGLTexture::Linear);
 
+  QVector<GLfloat> vertData;
   for (int i = 0; i < 6; ++i) {
     for (int j = 0; j < 4; ++j) {
-      texCoords.append(QVector2D(j == 0 || j == 3, j == 0 || j == 1));
-      vertices.append(QVector3D(0.2 * coords[i][j][0], 0.2 * coords[i][j][1], 0.2 * coords[i][j][2]));
+      // vertex position
+      vertData.append(0.2 * coords[i][j][0]);
+      vertData.append(0.2 * coords[i][j][1]);
+      vertData.append(0.2 * coords[i][j][2]);
+      // texture coordinate
+      vertData.append(j == 0 || j == 3);
+      vertData.append(j == 0 || j == 1);
     }
   }
+
+  //create buffers
+  vertexBuffer.create();
+  vertexBuffer.bind();
+  vertexBuffer.allocate(vertData.constData(), vertData.count() * sizeof(GLfloat));
 }
