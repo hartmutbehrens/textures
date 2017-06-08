@@ -207,6 +207,7 @@ void GLWidget::initializeGL()
       _buffer = static_cast<float*>(malloc(_uboSize));
     }
   }
+  _f->glBindBufferBase(GL_UNIFORM_BUFFER, _uboIndex, _ubo);
 }
 
 void GLWidget::paintGL()
@@ -227,9 +228,9 @@ void GLWidget::paintGL()
   memcpy(_buffer, m.constData(), 16*sizeof(float));
   memcpy(_buffer + 16, n.constData(), 16*sizeof(float));
 
+  //update UBO
   glBindBuffer(GL_UNIFORM_BUFFER, _ubo);
   glBufferData(GL_UNIFORM_BUFFER, _uboSize, _buffer, GL_STATIC_DRAW);
-  _f->glBindBufferBase(GL_UNIFORM_BUFFER, _uboIndex, _ubo);
 
   _program->setUniformValue("rotIndex", rotIndex);
   _program->enableAttributeArray(PROGRAM_VERTEX_ATTRIBUTE);
