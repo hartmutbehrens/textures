@@ -82,16 +82,17 @@ private:
   int rotIndex;
 
   QOpenGLShaderProgram* _program;
-  QOpenGLBuffer _vbo;
   QOpenGLVertexArrayObject _vao;
   QOpenGLTexture* _texture;
   float* _buffer;
 
   QString _texturePath;
 
-  GLuint _ubo;
+  GLuint _uboId;
   GLuint _uboIndex;
   GLint _uboSize;
+
+  GLuint _vboId;
 
   QOpenGLExtraFunctions *_f;
 };

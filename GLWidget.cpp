@@ -54,8 +54,9 @@ GLWidget::GLWidget(const QString& texturePath, QWidget *parent)
     _program(0),
     _buffer(0),
     _texturePath(texturePath),
-    _ubo(0),
+    _uboId(0),
     _uboIndex(0),
+    _vboId(0),
     _f(0)
 {
 }
@@ -64,7 +65,6 @@ GLWidget::~GLWidget()
 {
   makeCurrent();
   free(_buffer);
-  _vbo.destroy();
   _vao.destroy();
   delete _texture;
   delete _program;
@@ -124,9 +124,10 @@ void GLWidget::initializeGL()
       "\n"
       "struct VertexData {\n"
       "  mat4 rotMatrix;\n"
+      "  vec4 dummy;\n" //the iMX6 needs at least two elements in a struct, otherwise graphical corruption
       "};\n"
       "layout(std140) uniform u_VertexData {\n"
-      "  VertexData vData[64];\n"
+      "  VertexData vData[2];\n"
       "};\n"
       "\n"
       "int getRotationIndex(void)         { return rotIndex; }\n"
@@ -194,7 +195,7 @@ void GLWidget::initializeGL()
   _vao.create();
   _vao.bind();
 
-  glGenBuffers(1, &_ubo);
+  glGenBuffers(1, &_uboId);
 
   _uboIndex = _f->glGetUniformBlockIndex(_program->programId(), "u_VertexData");
   if (_uboIndex == GL_INVALID_INDEX) {
@@ -207,13 +208,20 @@ void GLWidget::initializeGL()
       _buffer = static_cast<float*>(malloc(_uboSize));
     }
   }
-  _f->glBindBufferBase(GL_UNIFORM_BUFFER, _uboIndex, _ubo);
+
+  //create UBO data store
+  glBindBuffer(GL_UNIFORM_BUFFER, _uboId);
+  glBufferData(GL_UNIFORM_BUFFER, _uboSize, NULL, GL_DYNAMIC_DRAW);
+  _f->glBindBufferBase(GL_UNIFORM_BUFFER, _uboIndex, _uboId);
+  // reset to default
+  _vao.release();
 }
 
 void GLWidget::paintGL()
 {
   glClearColor(clearColor.red(), clearColor.green(), clearColor.blue(), clearColor.alpha());
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+  _vao.bind();
 
   QMatrix4x4 m;
   m.ortho(-0.5f, +0.5f, +0.5f, -0.5f, 4.0f, 15.0f);
@@ -226,11 +234,11 @@ void GLWidget::paintGL()
   n.scale(0.5, 0.5, 0.5);
 
   memcpy(_buffer, m.constData(), 16*sizeof(float));
-  memcpy(_buffer + 16, n.constData(), 16*sizeof(float));
+  memcpy(_buffer + 16 + 4, n.constData(), 16*sizeof(float));
 
   //update UBO
-  glBindBuffer(GL_UNIFORM_BUFFER, _ubo);
-  glBufferData(GL_UNIFORM_BUFFER, _uboSize, _buffer, GL_STATIC_DRAW);
+  glBindBuffer(GL_UNIFORM_BUFFER, _uboId);
+  glBufferSubData(GL_UNIFORM_BUFFER, 0, _uboSize, _buffer);
 
   _program->setUniformValue("rotIndex", rotIndex);
   _program->enableAttributeArray(PROGRAM_VERTEX_ATTRIBUTE);
@@ -242,6 +250,7 @@ void GLWidget::paintGL()
   for (int i = 0; i < 6; ++i) {
     glDrawArrays(GL_TRIANGLE_FAN, i * 4, 4);
   }
+  _vao.release();
 }
 
 void GLWidget::toggleRotationIndex()
@@ -308,7 +317,7 @@ void GLWidget::makeObject()
   }
 
   //create buffers
-  _vbo.create();
-  _vbo.bind();
-  _vbo.allocate(vertData.constData(), vertData.count() * sizeof(GLfloat));
+  glGenBuffers(1, &_vboId);
+  glBindBuffer(GL_ARRAY_BUFFER, _vboId);
+  glBufferData(GL_ARRAY_BUFFER, vertData.count() * sizeof(GLfloat), vertData.constData(), GL_STATIC_DRAW);
 }
