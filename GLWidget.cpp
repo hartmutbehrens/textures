@@ -47,12 +47,11 @@
 GLWidget::GLWidget(const QString& texturePath, QWidget *parent)
   : QOpenGLWidget(parent),
     clearColor(Qt::black),
-    xRot(0),
-    yRot(0),
-    zRot(0),
-    rotIndex(0),
+    _xRot(0),
+    _yRot(0),
+    _zRot(0),
+    _rotIndex(0),
     _program(0),
-    _buffer(0),
     _texturePath(texturePath),
     _uboId(0),
     _uboIndex(0),
@@ -64,7 +63,6 @@ GLWidget::GLWidget(const QString& texturePath, QWidget *parent)
 GLWidget::~GLWidget()
 {
   makeCurrent();
-  free(_buffer);
   _vao.destroy();
   delete _texture;
   delete _program;
@@ -83,9 +81,9 @@ QSize GLWidget::sizeHint() const
 
 void GLWidget::rotateBy(int xAngle, int yAngle, int zAngle)
 {
-  xRot += xAngle;
-  yRot += yAngle;
-  zRot += zAngle;
+  _xRot += xAngle;
+  _yRot += yAngle;
+  _zRot += zAngle;
   update();
 }
 
@@ -204,9 +202,6 @@ void GLWidget::initializeGL()
   }
   else {
     _f->glGetActiveUniformBlockiv(_program->programId(), _uboIndex, GL_UNIFORM_BLOCK_DATA_SIZE, &_uboSize);
-    if(_buffer == 0) {
-      _buffer = static_cast<float*>(malloc(_uboSize));
-    }
   }
 
   //create UBO data store
@@ -226,21 +221,24 @@ void GLWidget::paintGL()
   QMatrix4x4 m;
   m.ortho(-0.5f, +0.5f, +0.5f, -0.5f, 4.0f, 15.0f);
   m.translate(0.0f, 0.0f, -10.0f);
-  m.rotate(xRot / 16.0f, 1.0f, 0.0f, 0.0f);
-  m.rotate(yRot / 16.0f, 0.0f, 1.0f, 0.0f);
-  m.rotate(zRot / 16.0f, 0.0f, 0.0f, 1.0f);
-
-  QMatrix4x4 n = m;
-  n.scale(0.5, 0.5, 0.5);
-
-  memcpy(_buffer, m.constData(), 16*sizeof(float));
-  memcpy(_buffer + 16 + 4, n.constData(), 16*sizeof(float));
+  m.rotate(_xRot / 16.0f, 1.0f, 0.0f, 0.0f);
+  m.rotate(_yRot / 16.0f, 0.0f, 1.0f, 0.0f);
+  m.rotate(_zRot / 16.0f, 0.0f, 0.0f, 1.0f);
 
   //update UBO
   glBindBuffer(GL_UNIFORM_BUFFER, _uboId);
-  glBufferSubData(GL_UNIFORM_BUFFER, 0, _uboSize, _buffer);
+  if (_rotIndex == 0) {
+    memcpy(_buffer, m.constData(), 16*sizeof(float));
+    glBufferSubData(GL_UNIFORM_BUFFER, 0, 16*sizeof(float), _buffer);
+  }
+  else {
+    QMatrix4x4 n = m;
+    n.scale(0.5, 0.5, 0.5);
+    memcpy(_buffer, n.constData(), 16*sizeof(float));
+    glBufferSubData(GL_UNIFORM_BUFFER, (16+4)*sizeof(float), 16*sizeof(float), _buffer);
+  }
 
-  _program->setUniformValue("rotIndex", rotIndex);
+  _program->setUniformValue("rotIndex", _rotIndex);
   _program->enableAttributeArray(PROGRAM_VERTEX_ATTRIBUTE);
   _program->enableAttributeArray(PROGRAM_TEXCOORD_ATTRIBUTE);
   _program->setAttributeBuffer(PROGRAM_VERTEX_ATTRIBUTE, GL_FLOAT, 0, 3, 5 * sizeof(GLfloat));
@@ -255,7 +253,7 @@ void GLWidget::paintGL()
 
 void GLWidget::toggleRotationIndex()
 {
-  rotIndex = (rotIndex == 0) ? 1 : 0;
+  _rotIndex = (_rotIndex == 0) ? 1 : 0;
   update();
 }
 

@@ -76,15 +76,15 @@ private:
 
   QColor clearColor;
   QPoint lastPos;
-  int xRot;
-  int yRot;
-  int zRot;
-  int rotIndex;
+  int _xRot;
+  int _yRot;
+  int _zRot;
+  int _rotIndex;
 
   QOpenGLShaderProgram* _program;
   QOpenGLVertexArrayObject _vao;
   QOpenGLTexture* _texture;
-  float* _buffer;
+  float _buffer[16];
 
   QString _texturePath;
 
