@@ -46,7 +46,7 @@
 
 GLWidget::GLWidget(const QString& texturePath, QWidget *parent)
   : QOpenGLWidget(parent),
-    clearColor(Qt::black),
+    _clearColor(Qt::black),
     _xRot(0),
     _yRot(0),
     _zRot(0),
@@ -89,7 +89,7 @@ void GLWidget::rotateBy(int xAngle, int yAngle, int zAngle)
 
 void GLWidget::setClearColor(const QColor &color)
 {
-  clearColor = color;
+  _clearColor = color;
   update();
 }
 
@@ -97,6 +97,10 @@ void GLWidget::initializeGL()
 {
   initializeOpenGLFunctions();
   _f = QOpenGLContext::currentContext()->extraFunctions();
+
+  //create VAO
+  _vao.create();
+  _vao.bind();
 
   makeObject();
 
@@ -122,7 +126,7 @@ void GLWidget::initializeGL()
       "\n"
       "struct VertexData {\n"
       "  mat4 rotMatrix;\n"
-      "  vec4 dummy;\n" //the iMX6 needs at least two elements in a struct, otherwise graphical corruption
+      "  mat4 _dummy1;\n" //the iMX6 needs at least two elements in a struct, otherwise graphical corruption
       "};\n"
       "layout(std140) uniform u_VertexData {\n"
       "  VertexData vData[2];\n"
@@ -189,12 +193,7 @@ void GLWidget::initializeGL()
   _program->bind();
   _program->setUniformValue("tex", 0);
 
-  //create VAO
-  _vao.create();
-  _vao.bind();
-
   glGenBuffers(1, &_uboId);
-
   _uboIndex = _f->glGetUniformBlockIndex(_program->programId(), "u_VertexData");
   if (_uboIndex == GL_INVALID_INDEX) {
     qWarning("u_VertexData uniform block index could not be determined.");
@@ -208,13 +207,13 @@ void GLWidget::initializeGL()
   glBindBuffer(GL_UNIFORM_BUFFER, _uboId);
   glBufferData(GL_UNIFORM_BUFFER, _uboSize, NULL, GL_DYNAMIC_DRAW);
   _f->glBindBufferBase(GL_UNIFORM_BUFFER, _uboIndex, _uboId);
-  // reset to default
+
   _vao.release();
 }
 
 void GLWidget::paintGL()
 {
-  glClearColor(clearColor.red(), clearColor.green(), clearColor.blue(), clearColor.alpha());
+  glClearColor(_clearColor.red(), _clearColor.green(), _clearColor.blue(), _clearColor.alpha());
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
   _vao.bind();
 
@@ -235,7 +234,7 @@ void GLWidget::paintGL()
     QMatrix4x4 n = m;
     n.scale(0.5, 0.5, 0.5);
     memcpy(_buffer, n.constData(), 16*sizeof(float));
-    glBufferSubData(GL_UNIFORM_BUFFER, (16+4)*sizeof(float), 16*sizeof(float), _buffer);
+    glBufferSubData(GL_UNIFORM_BUFFER, (16+16)*sizeof(float), 16*sizeof(float), _buffer);
   }
 
   _program->setUniformValue("rotIndex", _rotIndex);
@@ -265,20 +264,20 @@ void GLWidget::resizeGL(int width, int height)
 
 void GLWidget::mousePressEvent(QMouseEvent *event)
 {
-  lastPos = event->pos();
+  _lastPos = event->pos();
 }
 
 void GLWidget::mouseMoveEvent(QMouseEvent *event)
 {
-  int dx = event->x() - lastPos.x();
-  int dy = event->y() - lastPos.y();
+  int dx = event->x() - _lastPos.x();
+  int dy = event->y() - _lastPos.y();
 
   if (event->buttons() & Qt::LeftButton) {
     rotateBy(8 * dy, 8 * dx, 0);
   } else if (event->buttons() & Qt::RightButton) {
     rotateBy(8 * dy, 0, 8 * dx);
   }
-  lastPos = event->pos();
+  _lastPos = event->pos();
 }
 
 void GLWidget::mouseReleaseEvent(QMouseEvent * /* event */)

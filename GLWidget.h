@@ -74,8 +74,8 @@ protected:
 private:
   void makeObject();
 
-  QColor clearColor;
-  QPoint lastPos;
+  QColor _clearColor;
+  QPoint _lastPos;
   int _xRot;
   int _yRot;
   int _zRot;
