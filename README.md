@@ -1,1 +1,1 @@
-Basic OpenGL example with textures. Requires Qt5. Useful for debugging.
+OpenGL example with textures + Uniform Buffer Object. Requires Qt5.
