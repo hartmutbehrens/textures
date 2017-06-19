@@ -53,8 +53,12 @@ GLWidget::GLWidget(const QString& texturePath, QWidget *parent)
     _rotIndex(0),
     _program(0),
     _texturePath(texturePath),
+#ifdef USE_UBO
     _uboId(0),
     _uboIndex(0),
+#else
+    _shaderParamTexId(0),
+#endif
     _vboId(0),
     _f(0)
 {
@@ -113,6 +117,8 @@ void GLWidget::initializeGL()
 #define PROGRAM_VERTEX_ATTRIBUTE 0
 #define PROGRAM_TEXCOORD_ATTRIBUTE 1
 
+
+#ifdef USE_UBO
   QOpenGLShader *vshader = new QOpenGLShader(QOpenGLShader::Vertex, this);
   QString vsrc =
       "in vec4 vertex;\n"
@@ -142,6 +148,30 @@ void GLWidget::initializeGL()
       "    gl_Position = rotMatrix * vertex;\n"
       "    texc = texCoord;\n"
       "}\n";
+#else
+  QOpenGLShader *vshader = new QOpenGLShader(QOpenGLShader::Vertex, this);
+  QString vsrc =
+      "in vec4 vertex;\n"
+      "in vec2 texCoord;\n"
+      "out vec2 texc;\n"
+      "uniform int rotIndex;\n"
+      "uniform sampler2D storage;\n"
+      "\n"
+      "int getRotoationIndex(void);\n"
+      "mat4 getRotationMatrix(int Index);\n"
+      "mat4 getRotationMatrix(void);\n"
+      "\n"
+      "int getRotationIndex(void)         { return rotIndex; }\n"
+      "mat4 getRotationMatrix(void)       { return getRotationMatrix(getRotationIndex()); }\n"
+      "mat4 getRotationMatrix(int index)  { return mat4(texelFetch(storage, ivec2(0,index), 0), texelFetch(storage, ivec2(1,index), 0), texelFetch(storage, ivec2(2,index), 0), texelFetch(storage, ivec2(3,index), 0)); }\n"
+      "\n"
+      "void main(void)\n"
+      "{\n"
+      "    mat4 rotMatrix = getRotationMatrix(rotIndex);\n"
+      "    gl_Position = rotMatrix * vertex;\n"
+      "    texc = texCoord;\n"
+      "}\n";
+#endif
 
   QOpenGLShader *fshader = new QOpenGLShader(QOpenGLShader::Fragment, this);
   QString fsrc =
@@ -193,6 +223,8 @@ void GLWidget::initializeGL()
   _program->bind();
   _program->setUniformValue("tex", 0);
 
+ #ifdef USE_UBO
+  //use UBO as a shader parameter mechanism
   glGenBuffers(1, &_uboId);
   _uboIndex = _f->glGetUniformBlockIndex(_program->programId(), "u_VertexData");
   if (_uboIndex == GL_INVALID_INDEX) {
@@ -207,6 +239,16 @@ void GLWidget::initializeGL()
   glBindBuffer(GL_UNIFORM_BUFFER, _uboId);
   glBufferData(GL_UNIFORM_BUFFER, _uboSize, NULL, GL_DYNAMIC_DRAW);
   _f->glBindBufferBase(GL_UNIFORM_BUFFER, _uboIndex, _uboId);
+#else
+  //use texture as shader parameter mechanism
+  glGenTextures(1, &_shaderParamTexId);
+  glBindTexture(GL_TEXTURE_2D, _shaderParamTexId);
+  //we're using this texture as storage, so do not want mipmapping
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+  //create the storage
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, 4, 2, 0, GL_RGBA, GL_FLOAT, NULL);
+#endif
 
   _vao.release();
 }
@@ -224,6 +266,7 @@ void GLWidget::paintGL()
   m.rotate(_yRot / 16.0f, 0.0f, 1.0f, 0.0f);
   m.rotate(_zRot / 16.0f, 0.0f, 0.0f, 1.0f);
 
+#ifdef USE_UBO
   //update UBO
   glBindBuffer(GL_UNIFORM_BUFFER, _uboId);
   if (_rotIndex == 0) {
@@ -236,6 +279,20 @@ void GLWidget::paintGL()
     memcpy(_buffer, n.constData(), 16*sizeof(float));
     glBufferSubData(GL_UNIFORM_BUFFER, (16+16)*sizeof(float), 16*sizeof(float), _buffer);
   }
+#else
+  glActiveTexture(GL_TEXTURE1);
+  _program->setUniformValue("storage", 1);
+  glBindTexture(GL_TEXTURE_2D, _shaderParamTexId);
+  //update shader parameters ion texture
+  if (_rotIndex == 0) {
+    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 4, 1, GL_RGBA, GL_FLOAT, m.constData());
+  }
+  else {
+    QMatrix4x4 n = m;
+    n.scale(0.5, 0.5, 0.5);
+    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 1, 4, 1, GL_RGBA, GL_FLOAT, n.constData());
+  }
+#endif
 
   _program->setUniformValue("rotIndex", _rotIndex);
   _program->enableAttributeArray(PROGRAM_VERTEX_ATTRIBUTE);
@@ -243,6 +300,7 @@ void GLWidget::paintGL()
   _program->setAttributeBuffer(PROGRAM_VERTEX_ATTRIBUTE, GL_FLOAT, 0, 3, 5 * sizeof(GLfloat));
   _program->setAttributeBuffer(PROGRAM_TEXCOORD_ATTRIBUTE, GL_FLOAT, 3 * sizeof(GLfloat), 2, 5 * sizeof(GLfloat));
 
+  glActiveTexture(GL_TEXTURE0);
   _texture->bind();
   for (int i = 0; i < 6; ++i) {
     glDrawArrays(GL_TRIANGLE_FAN, i * 4, 4);
@@ -313,7 +371,7 @@ void GLWidget::makeObject()
     }
   }
 
-  //create buffers
+  //create vertex buffer
   glGenBuffers(1, &_vboId);
   glBindBuffer(GL_ARRAY_BUFFER, _vboId);
   glBufferData(GL_ARRAY_BUFFER, vertData.count() * sizeof(GLfloat), vertData.constData(), GL_STATIC_DRAW);
