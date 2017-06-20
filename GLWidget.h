@@ -41,9 +41,6 @@
 #ifndef GLWIDGET_H
 #define GLWIDGET_H
 
-// uncomment this to use UBO as shader parameter mechanism
-//#define USE_UBO
-
 #include <QtWidgets>
 #include <QOpenGLFunctions>
 
@@ -87,7 +84,7 @@ private:
   QOpenGLShaderProgram* _program;
   QOpenGLVertexArrayObject _vao;
   QOpenGLTexture* _texture;
-  float _buffer[16];
+  GLfloat _buffer[20];
 
   QString _texturePath;
 
@@ -96,7 +93,8 @@ private:
   GLuint _uboIndex;
   GLint _uboSize;
 #else
-  GLuint _shaderParamTexId;
+  GLuint _floatStorageTexId;
+  GLuint _intStorageTexId;
 #endif
   GLuint _vboId;
 

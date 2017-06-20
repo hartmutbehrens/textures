@@ -57,7 +57,8 @@ GLWidget::GLWidget(const QString& texturePath, QWidget *parent)
     _uboId(0),
     _uboIndex(0),
 #else
-    _shaderParamTexId(0),
+    _floatStorageTexId(0),
+    _intStorageTexId(0),
 #endif
     _vboId(0),
     _f(0)
@@ -124,51 +125,76 @@ void GLWidget::initializeGL()
       "in vec4 vertex;\n"
       "in vec2 texCoord;\n"
       "out vec2 texc;\n"
+      "flat out int materialID;"
       "uniform int rotIndex;\n"
       "\n"
       "int getRotoationIndex(void);\n"
       "mat4 getRotationMatrix(int Index);\n"
       "mat4 getRotationMatrix(void);\n"
       "\n"
+      "int getMaterialId(int Index);\n"
+      "int getMaterialId(void);\n"
+      "\n"
       "struct VertexData {\n"
       "  mat4 rotMatrix;\n"
-      "  mat4 _dummy1;\n" //the iMX6 needs at least two elements in a struct, otherwise graphical corruption
+      "  int material;\n" //the iMX6 needs at least two elements in a struct, otherwise graphical corruption
+      "  int dummy1;\n"
+      "  int dummy2;\n"
+      "  int dummy3;\n"
       "};\n"
       "layout(std140) uniform u_VertexData {\n"
       "  VertexData vData[2];\n"
       "};\n"
       "\n"
-      "int getRotationIndex(void)         { return rotIndex; }\n"
-      "mat4 getRotationMatrix(int Index)  { return vData[Index].rotMatrix; }\n"
-      "mat4 getRotationMatrix(void)       { return getRotationMatrix(getRotationIndex()); }\n"
+      "int getRotationIndex(void)        { return rotIndex; }\n"
+      "mat4 getRotationMatrix(int Index) { return vData[Index].rotMatrix; }\n"
+      "mat4 getRotationMatrix(void)      { return getRotationMatrix(getRotationIndex()); }\n"
+      "\n"
+      "int getMaterialId(int Index)      { return vData[Index].material; }\n"
+      "int getMaterialId(void)           { return getMaterialId(getRotationIndex()); }\n"
       "\n"
       "void main(void)\n"
       "{\n"
-      "    mat4 rotMatrix = getRotationMatrix(rotIndex);\n"
+      "    mat4 rotMatrix = getRotationMatrix();\n"
       "    gl_Position = rotMatrix * vertex;\n"
+      "    materialID = getMaterialId();\n"
       "    texc = texCoord;\n"
       "}\n";
 #else
   QOpenGLShader *vshader = new QOpenGLShader(QOpenGLShader::Vertex, this);
   QString vsrc =
+      "#ifdef GL_ES\n"
+      "precision mediump float;\n"
+      "precision mediump sampler2D;\n"
+      "precision mediump isampler2D;\n"
+      "#endif\n"
       "in vec4 vertex;\n"
       "in vec2 texCoord;\n"
+      "flat out int materialID;\n"
       "out vec2 texc;\n"
       "uniform int rotIndex;\n"
-      "uniform sampler2D storage;\n"
+      "uniform sampler2D floatSampler;\n"
+      "uniform isampler2D intSampler;\n"
       "\n"
       "int getRotoationIndex(void);\n"
       "mat4 getRotationMatrix(int Index);\n"
       "mat4 getRotationMatrix(void);\n"
       "\n"
-      "int getRotationIndex(void)         { return rotIndex; }\n"
-      "mat4 getRotationMatrix(void)       { return getRotationMatrix(getRotationIndex()); }\n"
-      "mat4 getRotationMatrix(int index)  { return mat4(texelFetch(storage, ivec2(0,index), 0), texelFetch(storage, ivec2(1,index), 0), texelFetch(storage, ivec2(2,index), 0), texelFetch(storage, ivec2(3,index), 0)); }\n"
+      "int getMaterialId(int Index);\n"
+      "int getMaterialId(void);\n"
+      "\n"
+      "int getRotationIndex(void)        { return rotIndex; }\n"
+      "mat4 getRotationMatrix(void)      { return getRotationMatrix(getRotationIndex()); }\n"
+      "mat4 getRotationMatrix(int index) { return mat4(texelFetch(floatSampler, ivec2(0+5*index,0), 0), texelFetch(floatSampler, ivec2(1+5*index,0), 0), texelFetch(floatSampler, ivec2(2+5*index,0), 0), texelFetch(floatSampler, ivec2(3+5*index,0), 0)); }\n"
+      "\n"
+      "int getMaterialId(int index)      { return int(texelFetch(intSampler, ivec2(4+5*index,0), 0).r); }\n"
+      "int getMaterialId(void)           { return getMaterialId(getRotationIndex()); }\n"
       "\n"
       "void main(void)\n"
       "{\n"
       "    mat4 rotMatrix = getRotationMatrix(rotIndex);\n"
       "    gl_Position = rotMatrix * vertex;\n"
+      "    materialID = getMaterialId();\n"
       "    texc = texCoord;\n"
       "}\n";
 #endif
@@ -176,21 +202,24 @@ void GLWidget::initializeGL()
   QOpenGLShader *fshader = new QOpenGLShader(QOpenGLShader::Fragment, this);
   QString fsrc =
       "#ifdef GL_ES\n"
-      "#ifdef GL_FRAGMENT_PRECISION_HIGH\n"
-      "precision highp float;\n"
-      "precision highp sampler2D;\n"
-      "#else\n"
       "precision mediump float;\n"
       "precision mediump sampler2D;\n"
-      "#endif\n"
+      "precision mediump isampler2D;\n"
       "#endif\n"
       "in vec2 texc;\n"
+      "flat in int materialID;"
       "out vec4 fragColor;\n"
       "uniform sampler2D tex;\n"
       "void main(void)\n"
       "{\n"
-      "    fragColor = texture(tex, texc);\n"
+      "  if (materialID == 1) {\n"
+      "    fragColor = mix(texture(tex, texc), vec4(1.0, 0.0, 0.0, 0.5), 0.4);\n"
+      "  }\n"
+      "  if (materialID == 7) {\n"
+      "    fragColor = mix(texture(tex, texc), vec4(0.0, 0.0, 1.0, 0.5), 0.4);\n"
+      "  }\n"
       "}\n";
+
 
   if (QOpenGLContext::currentContext()->isOpenGLES()) {
     vsrc.prepend(QByteArrayLiteral("#version 300 es\n"));
@@ -224,6 +253,7 @@ void GLWidget::initializeGL()
   _program->setUniformValue("tex", 0);
 
  #ifdef USE_UBO
+  qDebug("UBO-based shader parameter mechanism");
   //use UBO as a shader parameter mechanism
   glGenBuffers(1, &_uboId);
   _uboIndex = _f->glGetUniformBlockIndex(_program->programId(), "u_VertexData");
@@ -240,14 +270,23 @@ void GLWidget::initializeGL()
   glBufferData(GL_UNIFORM_BUFFER, _uboSize, NULL, GL_DYNAMIC_DRAW);
   _f->glBindBufferBase(GL_UNIFORM_BUFFER, _uboIndex, _uboId);
 #else
+  qDebug("Texture-based shader parameter mechanism");
   //use texture as shader parameter mechanism
-  glGenTextures(1, &_shaderParamTexId);
-  glBindTexture(GL_TEXTURE_2D, _shaderParamTexId);
+  //create texture for float data
+  glGenTextures(1, &_floatStorageTexId);
+  glBindTexture(GL_TEXTURE_2D, _floatStorageTexId);
   //we're using this texture as storage, so do not want mipmapping
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
   //create the storage
-  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, 4, 2, 0, GL_RGBA, GL_FLOAT, NULL);
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, 10, 1, 0, GL_RGBA, GL_FLOAT, NULL);
+
+  //create texture for int data
+  glGenTextures(1, &_intStorageTexId);
+  glBindTexture(GL_TEXTURE_2D, _intStorageTexId);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32I, 10, 1, 0, GL_RGBA_INTEGER, GL_INT, NULL);
 #endif
 
   _vao.release();
@@ -266,32 +305,50 @@ void GLWidget::paintGL()
   m.rotate(_yRot / 16.0f, 0.0f, 1.0f, 0.0f);
   m.rotate(_zRot / 16.0f, 0.0f, 0.0f, 1.0f);
 
+  if (_rotIndex == 0) {
+    int material[4] = {1,0,0,0};
+    memcpy(_buffer, m.constData(), 16*sizeof(GLfloat));
+    memcpy(&_buffer[16], material, 4*sizeof(GLint));
+  }
+  else {
+    QMatrix4x4 n = m;
+    n.scale(0.5, 0.5, 0.5);
+    int material[4] = {7,0,0,0};
+    memcpy(_buffer, n.constData(), 16*sizeof(GLfloat));
+    memcpy(&_buffer[16], material, 4*sizeof(GLint));
+  }
+
 #ifdef USE_UBO
   //update UBO
   glBindBuffer(GL_UNIFORM_BUFFER, _uboId);
   if (_rotIndex == 0) {
-    memcpy(_buffer, m.constData(), 16*sizeof(float));
-    glBufferSubData(GL_UNIFORM_BUFFER, 0, 16*sizeof(float), _buffer);
+    glBufferSubData(GL_UNIFORM_BUFFER, 0, 16*sizeof(GLfloat)+4*sizeof(GLint), _buffer);
   }
   else {
-    QMatrix4x4 n = m;
-    n.scale(0.5, 0.5, 0.5);
-    memcpy(_buffer, n.constData(), 16*sizeof(float));
-    glBufferSubData(GL_UNIFORM_BUFFER, (16+16)*sizeof(float), 16*sizeof(float), _buffer);
+    glBufferSubData(GL_UNIFORM_BUFFER, 16*sizeof(GLfloat)+4*sizeof(GLint), 16*sizeof(GLfloat)+4*sizeof(GLint), _buffer);
   }
 #else
+  //update float texture
   glActiveTexture(GL_TEXTURE1);
-  _program->setUniformValue("storage", 1);
-  glBindTexture(GL_TEXTURE_2D, _shaderParamTexId);
-  //update shader parameters ion texture
+  _program->setUniformValue("floatSampler", 1);
+  glBindTexture(GL_TEXTURE_2D, _floatStorageTexId);
   if (_rotIndex == 0) {
-    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 4, 1, GL_RGBA, GL_FLOAT, m.constData());
+    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 5, 1, GL_RGBA, GL_FLOAT, _buffer);
   }
   else {
-    QMatrix4x4 n = m;
-    n.scale(0.5, 0.5, 0.5);
-    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 1, 4, 1, GL_RGBA, GL_FLOAT, n.constData());
+    glTexSubImage2D(GL_TEXTURE_2D, 0, 5, 0, 5, 1, GL_RGBA, GL_FLOAT, _buffer);
   }
+  //update int texture
+  glActiveTexture(GL_TEXTURE2);
+  _program->setUniformValue("intSampler", 2);
+  glBindTexture(GL_TEXTURE_2D, _intStorageTexId);
+  if (_rotIndex == 0) {
+    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 5, 1, GL_RGBA_INTEGER, GL_INT, _buffer);
+  }
+  else {
+    glTexSubImage2D(GL_TEXTURE_2D, 0, 5, 0, 5, 1, GL_RGBA_INTEGER, GL_INT, _buffer);
+  }
+
 #endif
 
   _program->setUniformValue("rotIndex", _rotIndex);
