@@ -7,6 +7,7 @@ SOURCES = GLWidget.cpp \
 RESOURCES     = textures.qrc
 QT           += opengl widgets
 
+# Uncomment this to use UBO-based shader parameter storage instead of texture-based storage
 # DEFINES += USE_UBO
 
 # install
