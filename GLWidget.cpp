@@ -235,16 +235,19 @@ void GLWidget::initializeGL()
 
   _program = new QOpenGLShaderProgram(this);
   if (!_program->addShader(vshader)) {
+    qDebug("Could not add vertex shader. Error log is:");
     qWarning() << _program->log();
     exit(EXIT_FAILURE);
   }
   if (!_program->addShader(fshader)) {
+    qDebug("Could not add fragment shader. Error log is:");
     qWarning() << _program->log();
     exit(EXIT_FAILURE);
   }
   _program->bindAttributeLocation("vertex", PROGRAM_VERTEX_ATTRIBUTE);
   _program->bindAttributeLocation("texCoord", PROGRAM_TEXCOORD_ATTRIBUTE);
   if (!_program->link()) {
+     qDebug("Could not link shader program. Error log is:");
     qWarning() << _program->log();
     exit(EXIT_FAILURE);
   }
